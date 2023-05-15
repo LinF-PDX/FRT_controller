@@ -71,8 +71,9 @@ uint8_t RxData[8];
 uint32_t TxMailbox;
 uint8_t MotorStatus = 0;
 uint8_t ControlStatus = 0;
-uint16_t ADC_VAL = 0;
-float adc_percent = 0;
+
+float APPS1_ADC_Percent;
+float APPS2_ADC_Percent;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -87,6 +88,26 @@ static void CAN_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+float APPS1_ADC_VAL(void) {
+	uint16_t ADC_VAL;
+
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, 10);
+	ADC_VAL = HAL_ADC_GetValue(&hadc1);
+	HAL_ADC_Stop(&hadc1);
+	return (float)ADC_VAL/4095;
+}
+
+float APPS2_ADC_VAL(void) {
+	uint16_t ADC_VAL;
+
+	HAL_ADC_Start(&hadc2);
+	HAL_ADC_PollForConversion(&hadc2, 10);
+	ADC_VAL = HAL_ADC_GetValue(&hadc2);
+	HAL_ADC_Stop(&hadc2);
+	return (float)ADC_VAL/4095;
+}
+
 
 /* USER CODE END 0 */
 
@@ -122,7 +143,7 @@ int main(void)
   MX_ADC1_Init();
   MX_ADC2_Init();
   /* USER CODE BEGIN 2 */
-  CAN_Config();
+  	CAN_Config();
 
 	if (HAL_CAN_ActivateNotification(&hcan1, CAN_IT_RX_FIFO0_MSG_PENDING) != HAL_OK)
 	{
@@ -149,11 +170,7 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	HAL_ADC_Start(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 10);
-	ADC_VAL = HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_Stop(&hadc1);
-	adc_percent = (float)ADC_VAL/4095;
+	APPS1_ADC_Percent = APPS1_ADC_VAL();
 
 	HAL_Delay(5);
 //	if (MotorStatus == STATUS_ERROR){
@@ -427,16 +444,16 @@ static void MX_GPIO_Init(void)
 static void CAN_Config(void)
 {
 	CAN_FilterTypeDef sFilterConfig;
-	sFilterConfig.FilterBank = 0;
+	sFilterConfig.FilterBank = 13;
 	sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
 	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
-	sFilterConfig.FilterIdHigh = 0x0000;
+	sFilterConfig.FilterIdHigh = 0x284<<5;
 	sFilterConfig.FilterIdLow = 0x0000;
-	sFilterConfig.FilterMaskIdHigh = 0x0000;
+	sFilterConfig.FilterMaskIdHigh = 0xFFE<<5; //Only ID 0x284 and 0x285 can pass through
 	sFilterConfig.FilterMaskIdLow = 0x0000;
 	sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
 	sFilterConfig.FilterActivation = ENABLE;
-	sFilterConfig.SlaveStartFilterBank = 14;
+	sFilterConfig.SlaveStartFilterBank = 0;
 
 	if (HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig) != HAL_OK)
 	{
