@@ -57,10 +57,18 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define APPS1_Pin GPIO_PIN_0
+#define APPS1_GPIO_Port GPIOC
+#define APPS2_Pin GPIO_PIN_1
+#define APPS2_GPIO_Port GPIOC
 #define DEBUG_LED_Pin GPIO_PIN_3
 #define DEBUG_LED_GPIO_Port GPIOA
+#define START_BTN_LED_EN_Pin GPIO_PIN_5
+#define START_BTN_LED_EN_GPIO_Port GPIOA
 #define BRAKE_LIGHT_EN_Pin GPIO_PIN_0
 #define BRAKE_LIGHT_EN_GPIO_Port GPIOG
+#define RTDS_EN_Pin GPIO_PIN_3
+#define RTDS_EN_GPIO_Port GPIOG
 
 /* USER CODE BEGIN Private defines */
 
