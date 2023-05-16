@@ -21,7 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -95,7 +95,7 @@ float APPS1_ADC_VAL(void) {
 	HAL_ADC_PollForConversion(&hadc1, 10);
 	ADC_VAL = HAL_ADC_GetValue(&hadc1);
 	HAL_ADC_Stop(&hadc1);
-	return (float)ADC_VAL/4095;
+	return (float)ADC_VAL/4095; //returns ADC percentage ranges from 0-1
 }
 
 float APPS2_ADC_VAL(void) {
@@ -193,8 +193,9 @@ int main(void)
 				break;
 			case STATUS_QUIT_INVERTER_ON:
 				ControlStatus = CONTROL_RUNNING;
-				TxData[4] = 0x32;
-				TxData[2] = 0x64;
+				TxData[1] = 0x07;
+				TxData[4] = 0x32; //set positive torque request to 50
+				TxData[2] = 0x64; //set RPM to 100
 				break;
 			case STATUS_ERROR:
 				TxData[1] = 0x08;
@@ -204,6 +205,7 @@ int main(void)
 				ControlStatus = CONTROL_UNKNOWN;
 		}
 	HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
+	memset(&TxData[0],0x00, 8*sizeof(uint8_t));
   }
     /* USER CODE END WHILE */
 
@@ -335,7 +337,7 @@ static void MX_ADC2_Init(void)
   hadc2.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV2;
   hadc2.Init.Resolution = ADC_RESOLUTION_12B;
   hadc2.Init.ScanConvMode = ADC_SCAN_DISABLE;
-  hadc2.Init.ContinuousConvMode = DISABLE;
+  hadc2.Init.ContinuousConvMode = ENABLE;
   hadc2.Init.DiscontinuousConvMode = DISABLE;
   hadc2.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
   hadc2.Init.ExternalTrigConv = ADC_SOFTWARE_START;
@@ -475,7 +477,11 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 		Error_Handler();
 	}
 	if (RxHeader.StdId == 0x285) {
-		HAL_GPIO_TogglePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin);
+		if ((RxData[1] >> 1) & 1) {
+			MotorStatus = STATUS_ERROR;
+			return;
+		}
+
 		switch(RxData[1]) {
 			case 0b00000001:
 				MotorStatus = STATUS_SYSTEM_READY;
@@ -491,15 +497,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 				break;
 			case 0b01111001:
 				MotorStatus = STATUS_QUIT_INVERTER_ON;
-				break;
-			case 0b00000010:
-				MotorStatus = STATUS_ERROR;
-				break;
-			case 0b00010010:
-				MotorStatus = STATUS_ERROR;
-				break;
-			case 0x52:
-				MotorStatus = STATUS_ERROR;
 				break;
 			default:
 				MotorStatus = STATUS_UNKNOWN;
@@ -517,6 +514,7 @@ void Error_Handler(void)
   /* USER CODE BEGIN Error_Handler_Debug */
   /* User can add his own implementation to report the HAL error return state */
   __disable_irq();
+  HAL_GPIO_WritePin(DEBUG_LED_GPIO_Port, DEBUG_LED_Pin, 1);
   while (1)
   {
   }
