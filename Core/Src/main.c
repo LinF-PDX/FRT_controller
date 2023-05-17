@@ -73,8 +73,8 @@ uint8_t TxData_2[8];
 uint8_t RxData[8];
 uint8_t RxData_2[8];
 uint32_t TxMailbox;
-uint8_t MotorStatus = 0;
-uint8_t ControlStatus = 0;
+AMK_Status MotorStatus = 0;
+AMK_Control ControlStatus = 0;
 
 uint16_t APPS1_VAL;
 uint16_t APPS2_VAL;
