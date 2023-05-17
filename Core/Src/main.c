@@ -76,8 +76,8 @@ uint32_t TxMailbox;
 uint8_t MotorStatus = 0;
 uint8_t ControlStatus = 0;
 
-float APPS1_ADC_Percent;
-uint8_t APPS2_ADC_Percent;
+uint16_t APPS1_VAL;
+uint16_t APPS2_VAL;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -92,7 +92,7 @@ static void CAN_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-float APPS1_ADC_VAL(void) {
+float APPS1_ADC_Percent(void) {
 	uint16_t ADC_VAL;
 
 	HAL_ADC_Start(&hadc1);
@@ -102,7 +102,7 @@ float APPS1_ADC_VAL(void) {
 	return (float)ADC_VAL/4095; //returns ADC percentage ranges from 0-1
 }
 
-float APPS2_ADC_VAL(void) {
+float APPS2_ADC_Percent(void) {
 	uint16_t ADC_VAL;
 
 	HAL_ADC_Start(&hadc2);
@@ -112,8 +112,8 @@ float APPS2_ADC_VAL(void) {
 	return (float)ADC_VAL/4095;
 }
 
-uint8_t decimalToHex(uint8_t decimal) {
-    uint8_t hex = 0;
+uint16_t DecimalToHex(uint16_t decimal) {
+    uint16_t hex = 0;
     unsigned char highNibble, lowNibble;
 
         highNibble = decimal / 16;
@@ -200,8 +200,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	APPS2_ADC_Percent = APPS2_ADC_VAL();
-	APPS1_ADC_Percent = decimalToHex(APPS2_ADC_Percent*255);
+	APPS2_VAL = APPS2_ADC_Percent();
+	APPS1_VAL = 4095;
+
 
 
 	HAL_Delay(5);
@@ -232,28 +233,24 @@ int main(void)
 	switch (MotorStatus) {
 			case STATUS_SYSTEM_READY:
 				TxData[1] = 0x02;
-				TxData[4] = 0x00;
-				TxData[2] = 0x00;
 
 				TxData_2[1] = 0x02;
-				TxData_2[4] = 0x00;
-				TxData_2[2] = 0x00;
 				ControlStatus = CONTROL_DC_ON;
 				break;
 			case STATUS_QUIT_DC_ON:
 				TxData[1] = 0x07;
-				TxData[4] = 0x00;
 				TxData[2] = 0x00;
+				TxData[4] = 0x00;
 
 				TxData_2[1] = 0x07;
-				TxData_2[4] = 0x00;
 				TxData_2[2] = 0x00;
+				TxData_2[4] = 0x00;
 				ControlStatus = CONTROL_ENABLE;
 				break;
 			case STATUS_INVERTER_ON:
 				TxData[1] = 0x07;
-				TxData[2] = 0x00;
-				TxData[4] = 0x00;
+				memset(&TxData[2],0x00, 2*sizeof(uint8_t));
+				memset(&TxData[4],0x00, 2*sizeof(uint8_t));
 
 				TxData_2[1] = 0x07;
 				TxData_2[2] = 0x00;
@@ -261,8 +258,11 @@ int main(void)
 				ControlStatus = CONTROL_INVERTER_ON;
 			case STATUS_QUIT_INVERTER_ON:
 				TxData[1] = 0x07;
-				TxData[2] = 0xFF; //set RPM to 100
+				TxData[2] = 0xFF;
+				TxData[3] = 0x00;
 				TxData[4] = 0x32; //set positive torque request to 50
+//				TxData[2] = APPS1_VAL & 0xFF;
+//				TxData[3] = (APPS1_VAL >> 8) & 0xFF;
 
 				TxData_2[1] = 0x07;
 				TxData_2[2] = 0x64;
@@ -567,26 +567,26 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 		if ((RxData[1] >> 1) & 1) {
 			MotorStatus = STATUS_ERROR;
 			return;
-		}
-
-		switch(RxData[1]) {
-			case 0b00000001:
-				MotorStatus = STATUS_SYSTEM_READY;
-				break;
-			case 0b00010001:
-				MotorStatus = STATUS_DC_ON;
-				break;
-			case 0b00011001:
-				MotorStatus = STATUS_QUIT_DC_ON;
-				break;
-			case 0x59:
-				MotorStatus = STATUS_INVERTER_ON;
-				break;
-			case 0x79:
-				MotorStatus = STATUS_QUIT_INVERTER_ON;
-				break;
-			default:
-				MotorStatus = STATUS_UNKNOWN;
+		} else {
+			switch(RxData[1]) {
+				case 0b00000001:
+					MotorStatus = STATUS_SYSTEM_READY;
+					break;
+				case 0b00010001:
+					MotorStatus = STATUS_DC_ON;
+					break;
+				case 0b00011001:
+					MotorStatus = STATUS_QUIT_DC_ON;
+					break;
+				case 0x59:
+					MotorStatus = STATUS_INVERTER_ON;
+					break;
+				case 0x79:
+					MotorStatus = STATUS_QUIT_INVERTER_ON;
+					break;
+				default:
+					MotorStatus = STATUS_UNKNOWN;
+			}
 		}
 	}
 }
