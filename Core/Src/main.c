@@ -40,8 +40,8 @@ typedef enum {
 typedef enum {
 	CONTROL_UNKNOWN = 0,
 	CONTROL_DC_ON,
-	CONTROL_INVERTER_ON,
 	CONTROL_ENABLE,
+	CONTROL_INVERTER_ON,
 	CONTROL_ERROR_RESET,
 	CONTROL_RUNNING,
 } AMK_Control;
@@ -65,15 +65,19 @@ CAN_HandleTypeDef hcan1;
 
 /* USER CODE BEGIN PV */
 CAN_TxHeaderTypeDef TxHeader;
+CAN_TxHeaderTypeDef TxHeader_2;
 CAN_RxHeaderTypeDef RxHeader;
+CAN_RxHeaderTypeDef RxHeader_2;
 uint8_t TxData[8];
+uint8_t TxData_2[8];
 uint8_t RxData[8];
+uint8_t RxData_2[8];
 uint32_t TxMailbox;
 uint8_t MotorStatus = 0;
 uint8_t ControlStatus = 0;
 
 float APPS1_ADC_Percent;
-float APPS2_ADC_Percent;
+uint8_t APPS2_ADC_Percent;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -108,6 +112,17 @@ float APPS2_ADC_VAL(void) {
 	return (float)ADC_VAL/4095;
 }
 
+uint8_t decimalToHex(uint8_t decimal) {
+    uint8_t hex = 0;
+    unsigned char highNibble, lowNibble;
+
+        highNibble = decimal / 16;
+        lowNibble = decimal % 16;
+
+        hex = (highNibble << 4) | lowNibble;
+
+        return hex;
+}
 
 /* USER CODE END 0 */
 
@@ -164,15 +179,49 @@ int main(void)
 	TxData[5] = 0x00;
 	TxData[6] = 0x00;
 	TxData[7] = 0x00;
+
+	TxHeader_2.DLC = 8;
+	TxHeader_2.IDE = CAN_ID_STD;
+	TxHeader_2.RTR = CAN_RTR_DATA;
+	TxHeader_2.StdId = 0x185;
+	TxHeader_2.TransmitGlobalTime = DISABLE;
+
+	TxData_2[0] = 0x00;
+	TxData_2[1] = 0x00;
+	TxData_2[2] = 0x00;
+	TxData_2[3] = 0x00;
+	TxData_2[4] = 0x00;
+	TxData_2[5] = 0x00;
+	TxData_2[6] = 0x00;
+	TxData_2[7] = 0x00;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	APPS1_ADC_Percent = APPS1_ADC_VAL();
+	APPS2_ADC_Percent = APPS2_ADC_VAL();
+	APPS1_ADC_Percent = decimalToHex(APPS2_ADC_Percent*255);
+
 
 	HAL_Delay(5);
+
+//	for (int i = 0; i < 24000; i++) {
+//		if (i == 4000) {
+//			TxData[1] = 0x02;
+//			MotorStatus = STATUS_SYSTEM_READY;
+//		}
+//		else if (i == 5000) {
+//			TxData[1] = 0x07;
+//			MotorStatus = STATUS_INVERTER_ON;
+//		}
+//		else if (i == 7000) {
+//			TxData[1] = 0x07;
+//			TxData[4] = 0x32; //set positive torque request to 50
+//			TxData[2] = 0x64;
+//			MotorStatus = STATUS_QUIT_INVERTER_ON;
+//		}
+//	}
 //	if (MotorStatus == STATUS_ERROR){
 //		TxData[1] = 0x08;
 //	} else {
@@ -183,28 +232,59 @@ int main(void)
 	switch (MotorStatus) {
 			case STATUS_SYSTEM_READY:
 				TxData[1] = 0x02;
+				TxData[4] = 0x00;
+				TxData[2] = 0x00;
+
+				TxData_2[1] = 0x02;
+				TxData_2[4] = 0x00;
+				TxData_2[2] = 0x00;
 				ControlStatus = CONTROL_DC_ON;
 				break;
 			case STATUS_QUIT_DC_ON:
 				TxData[1] = 0x07;
 				TxData[4] = 0x00;
 				TxData[2] = 0x00;
-				ControlStatus = CONTROL_INVERTER_ON;
+
+				TxData_2[1] = 0x07;
+				TxData_2[4] = 0x00;
+				TxData_2[2] = 0x00;
+				ControlStatus = CONTROL_ENABLE;
 				break;
-			case STATUS_QUIT_INVERTER_ON:
-				ControlStatus = CONTROL_RUNNING;
+			case STATUS_INVERTER_ON:
 				TxData[1] = 0x07;
+				TxData[2] = 0x00;
+				TxData[4] = 0x00;
+
+				TxData_2[1] = 0x07;
+				TxData_2[2] = 0x00;
+				TxData_2[4] = 0x00;
+				ControlStatus = CONTROL_INVERTER_ON;
+			case STATUS_QUIT_INVERTER_ON:
+				TxData[1] = 0x07;
+				TxData[2] = 0xFF; //set RPM to 100
 				TxData[4] = 0x32; //set positive torque request to 50
-				TxData[2] = 0x64; //set RPM to 100
+
+				TxData_2[1] = 0x07;
+				TxData_2[2] = 0x64;
+				TxData_2[4] = 0x32;
+				ControlStatus = CONTROL_RUNNING;
 				break;
 			case STATUS_ERROR:
 				TxData[1] = 0x08;
+				TxData[4] = 0x00;
+				TxData[2] = 0x00;
+
+				TxData_2[1] = 0x08;
+				TxData_2[4] = 0x00;
+				TxData_2[2] = 0x00;
 				ControlStatus = CONTROL_ERROR_RESET;
 				break;
 			default:
 				ControlStatus = CONTROL_UNKNOWN;
 		}
+
 	HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
+	//HAL_CAN_AddTxMessage(&hcan1, &TxHeader_2, TxData_2, &TxMailbox);
 	memset(&TxData[0],0x00, 8*sizeof(uint8_t));
   }
     /* USER CODE END WHILE */
@@ -388,10 +468,10 @@ static void MX_CAN1_Init(void)
   hcan1.Init.TimeSeg2 = CAN_BS2_1TQ;
   hcan1.Init.TimeTriggeredMode = DISABLE;
   hcan1.Init.AutoBusOff = ENABLE;
-  hcan1.Init.AutoWakeUp = ENABLE;
-  hcan1.Init.AutoRetransmission = ENABLE;
+  hcan1.Init.AutoWakeUp = DISABLE;
+  hcan1.Init.AutoRetransmission = DISABLE;
   hcan1.Init.ReceiveFifoLocked = DISABLE;
-  hcan1.Init.TransmitFifoPriority = ENABLE;
+  hcan1.Init.TransmitFifoPriority = DISABLE;
   if (HAL_CAN_Init(&hcan1) != HAL_OK)
   {
     Error_Handler();
@@ -476,6 +556,13 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	if (HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &RxHeader, RxData) != HAL_OK) {
 		Error_Handler();
 	}
+//	if (RxHeader.StdId == 0x285) {
+//		if ((RxData[1] >> 1) & 1) {
+//			MotorStatus = STATUS_ERROR;
+//			return;
+//		}
+//	}
+
 	if (RxHeader.StdId == 0x285) {
 		if ((RxData[1] >> 1) & 1) {
 			MotorStatus = STATUS_ERROR;
@@ -492,10 +579,10 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 			case 0b00011001:
 				MotorStatus = STATUS_QUIT_DC_ON;
 				break;
-			case 0b01011001:
+			case 0x59:
 				MotorStatus = STATUS_INVERTER_ON;
 				break;
-			case 0b01111001:
+			case 0x79:
 				MotorStatus = STATUS_QUIT_INVERTER_ON;
 				break;
 			default:
