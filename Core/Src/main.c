@@ -200,8 +200,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	APPS2_VAL = APPS2_ADC_Percent();
-	APPS1_VAL = 4095;
+	APPS2_VAL = APPS2_ADC_Percent()*500;
+	//APPS1_VAL = 4095;
 
 
 
@@ -229,6 +229,7 @@ int main(void)
 //		TxData[1] = 0x07;
 //	}
 	//HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
+
 
 	switch (MotorStatus) {
 			case STATUS_SYSTEM_READY:
@@ -258,15 +259,18 @@ int main(void)
 				ControlStatus = CONTROL_INVERTER_ON;
 			case STATUS_QUIT_INVERTER_ON:
 				TxData[1] = 0x07;
-				TxData[2] = 0xFF;
-				TxData[3] = 0x00;
+//				TxData[2] = 0xFF;
+//				TxData[3] = 0x00;
 				TxData[4] = 0x32; //set positive torque request to 50
-//				TxData[2] = APPS1_VAL & 0xFF;
-//				TxData[3] = (APPS1_VAL >> 8) & 0xFF;
+				TxData[2] = APPS2_VAL & 0xFF;
+				TxData[3] = (APPS2_VAL >> 8) & 0xFF;
 
 				TxData_2[1] = 0x07;
 				TxData_2[2] = 0x64;
 				TxData_2[4] = 0x32;
+//				if (RxData[1] != 0x79) {
+//						memset(&TxData[2],0x00, 4*sizeof(uint8_t));
+//				}
 				ControlStatus = CONTROL_RUNNING;
 				break;
 			case STATUS_ERROR:
