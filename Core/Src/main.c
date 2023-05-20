@@ -229,6 +229,7 @@ int main(void)
 //		TxData[1] = 0x07;
 //	}
 	//HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
+	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
 
 
 	switch (MotorStatus) {
@@ -259,17 +260,17 @@ int main(void)
 				ControlStatus = CONTROL_INVERTER_ON;
 			case STATUS_QUIT_INVERTER_ON:
 				TxData[1] = 0x07;
-//				TxData[2] = 0xFF;
-//				TxData[3] = 0x00;
-				TxData[4] = 0x32; //set positive torque request to 50
 				TxData[2] = APPS2_VAL & 0xFF;
 				TxData[3] = (APPS2_VAL >> 8) & 0xFF;
+				TxData[4] = 0x32; //set positive torque request to 50
 
 				TxData_2[1] = 0x07;
-				TxData_2[2] = 0x64;
+				TxData_2[2] = APPS2_VAL & 0xFF;
+				TxData_2[3] = (APPS2_VAL >> 8) & 0xFF;
 				TxData_2[4] = 0x32;
 				if (RxData[1] != 0x79) {
 						memset(&TxData[2],0x00, 4*sizeof(uint8_t));
+						memset(&TxData_2[2],0x00, 4*sizeof(uint8_t));
 				}
 				ControlStatus = CONTROL_RUNNING;
 				break;
@@ -288,7 +289,7 @@ int main(void)
 		}
 
 	HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
-	//HAL_CAN_AddTxMessage(&hcan1, &TxHeader_2, TxData_2, &TxMailbox);
+	HAL_CAN_AddTxMessage(&hcan1, &TxHeader_2, TxData_2, &TxMailbox);
 	memset(&TxData[0],0x00, 8*sizeof(uint8_t));
   }
     /* USER CODE END WHILE */
