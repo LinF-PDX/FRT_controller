@@ -268,9 +268,9 @@ int main(void)
 				TxData_2[1] = 0x07;
 				TxData_2[2] = 0x64;
 				TxData_2[4] = 0x32;
-//				if (RxData[1] != 0x79) {
-//						memset(&TxData[2],0x00, 4*sizeof(uint8_t));
-//				}
+				if (RxData[1] != 0x79) {
+						memset(&TxData[2],0x00, 4*sizeof(uint8_t));
+				}
 				ControlStatus = CONTROL_RUNNING;
 				break;
 			case STATUS_ERROR:
