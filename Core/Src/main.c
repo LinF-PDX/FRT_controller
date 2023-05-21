@@ -64,12 +64,12 @@ ADC_HandleTypeDef hadc2;
 CAN_HandleTypeDef hcan1;
 
 /* USER CODE BEGIN PV */
-CAN_TxHeaderTypeDef TxHeader;
-CAN_TxHeaderTypeDef TxHeader_2;
+CAN_TxHeaderTypeDef AMK_TxHeader_R;
+CAN_TxHeaderTypeDef AMK_TxHeader_L;
 CAN_RxHeaderTypeDef RxHeader;
 CAN_RxHeaderTypeDef RxHeader_2;
-uint8_t TxData[8];
-uint8_t TxData_2[8];
+uint8_t AMK_TxData_R[8];
+uint8_t AMK_TxData_L[8];
 uint8_t RxData[8];
 uint8_t RxData_2[8];
 uint32_t TxMailbox;
@@ -165,35 +165,35 @@ int main(void)
 	  Error_Handler();
 	}
 	// Initialize TxHeader and TxData
-	TxHeader.DLC = 8;
-	TxHeader.IDE = CAN_ID_STD;
-	TxHeader.RTR = CAN_RTR_DATA;
-	TxHeader.StdId = 0x186;
-	TxHeader.TransmitGlobalTime = DISABLE;
+	AMK_TxHeader_R.DLC = 8;
+	AMK_TxHeader_R.IDE = CAN_ID_STD;
+	AMK_TxHeader_R.RTR = CAN_RTR_DATA;
+	AMK_TxHeader_R.StdId = 0x186;
+	AMK_TxHeader_R.TransmitGlobalTime = DISABLE;
 
-	TxData[0] = 0x00;
-	TxData[1] = 0x00;
-	TxData[2] = 0x00;
-	TxData[3] = 0x00;
-	TxData[4] = 0x00;
-	TxData[5] = 0x00;
-	TxData[6] = 0x00;
-	TxData[7] = 0x00;
+	AMK_TxData_R[0] = 0x00;
+	AMK_TxData_R[1] = 0x00;
+	AMK_TxData_R[2] = 0x00;
+	AMK_TxData_R[3] = 0x00;
+	AMK_TxData_R[4] = 0x00;
+	AMK_TxData_R[5] = 0x00;
+	AMK_TxData_R[6] = 0x00;
+	AMK_TxData_R[7] = 0x00;
 
-	TxHeader_2.DLC = 8;
-	TxHeader_2.IDE = CAN_ID_STD;
-	TxHeader_2.RTR = CAN_RTR_DATA;
-	TxHeader_2.StdId = 0x185;
-	TxHeader_2.TransmitGlobalTime = DISABLE;
+	AMK_TxHeader_L.DLC = 8;
+	AMK_TxHeader_L.IDE = CAN_ID_STD;
+	AMK_TxHeader_L.RTR = CAN_RTR_DATA;
+	AMK_TxHeader_L.StdId = 0x185;
+	AMK_TxHeader_L.TransmitGlobalTime = DISABLE;
 
-	TxData_2[0] = 0x00;
-	TxData_2[1] = 0x00;
-	TxData_2[2] = 0x00;
-	TxData_2[3] = 0x00;
-	TxData_2[4] = 0x00;
-	TxData_2[5] = 0x00;
-	TxData_2[6] = 0x00;
-	TxData_2[7] = 0x00;
+	AMK_TxData_L[0] = 0x00;
+	AMK_TxData_L[1] = 0x00;
+	AMK_TxData_L[2] = 0x00;
+	AMK_TxData_L[3] = 0x00;
+	AMK_TxData_L[4] = 0x00;
+	AMK_TxData_L[5] = 0x00;
+	AMK_TxData_L[6] = 0x00;
+	AMK_TxData_L[7] = 0x00;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -203,94 +203,71 @@ int main(void)
 	APPS2_VAL = APPS2_ADC_Percent()*500;
 	//APPS1_VAL = 4095;
 
-
-
 	HAL_Delay(5);
 
-//	for (int i = 0; i < 24000; i++) {
-//		if (i == 4000) {
-//			TxData[1] = 0x02;
-//			MotorStatus = STATUS_SYSTEM_READY;
-//		}
-//		else if (i == 5000) {
-//			TxData[1] = 0x07;
-//			MotorStatus = STATUS_INVERTER_ON;
-//		}
-//		else if (i == 7000) {
-//			TxData[1] = 0x07;
-//			TxData[4] = 0x32; //set positive torque request to 50
-//			TxData[2] = 0x64;
-//			MotorStatus = STATUS_QUIT_INVERTER_ON;
-//		}
-//	}
-//	if (MotorStatus == STATUS_ERROR){
-//		TxData[1] = 0x08;
-//	} else {
-//		TxData[1] = 0x07;
-//	}
 	//HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
 	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
 
-
 	switch (MotorStatus) {
 			case STATUS_SYSTEM_READY:
-				TxData[1] = 0x02;
+				AMK_TxData_R[1] = 0x02;
 
-				TxData_2[1] = 0x02;
+				AMK_TxData_L[1] = 0x02;
 				ControlStatus = CONTROL_DC_ON;
 				break;
 			case STATUS_QUIT_DC_ON:
-				TxData[1] = 0x07;
-				TxData[2] = 0x00;
-				TxData[4] = 0x00;
+				AMK_TxData_R[1] = 0x07;
+				AMK_TxData_R[2] = 0x00;
+				AMK_TxData_R[4] = 0x00;
 
-				TxData_2[1] = 0x07;
-				TxData_2[2] = 0x00;
-				TxData_2[4] = 0x00;
+				AMK_TxData_L[1] = 0x07;
+				AMK_TxData_L[2] = 0x00;
+				AMK_TxData_L[4] = 0x00;
 				ControlStatus = CONTROL_ENABLE;
 				break;
 			case STATUS_INVERTER_ON:
-				TxData[1] = 0x07;
-				memset(&TxData[2],0x00, 2*sizeof(uint8_t));
-				memset(&TxData[4],0x00, 2*sizeof(uint8_t));
+				AMK_TxData_R[1] = 0x07;
+				memset(&AMK_TxData_R[2],0x00, 2*sizeof(uint8_t));
+				memset(&AMK_TxData_R[4],0x00, 2*sizeof(uint8_t));
 
-				TxData_2[1] = 0x07;
-				TxData_2[2] = 0x00;
-				TxData_2[4] = 0x00;
+				AMK_TxData_L[1] = 0x07;
+				AMK_TxData_L[2] = 0x00;
+				AMK_TxData_L[4] = 0x00;
 				ControlStatus = CONTROL_INVERTER_ON;
 			case STATUS_QUIT_INVERTER_ON:
-				TxData[1] = 0x07;
-				TxData[2] = APPS2_VAL & 0xFF;
-				TxData[3] = (APPS2_VAL >> 8) & 0xFF;
-				TxData[4] = 0x32; //set positive torque request to 50
+				AMK_TxData_R[1] = 0x07;
+				AMK_TxData_R[2] = APPS2_VAL & 0xFF;
+				AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
+				AMK_TxData_R[4] = 0x32; //set positive torque request to 50
 
-				TxData_2[1] = 0x07;
-				TxData_2[2] = APPS2_VAL & 0xFF;
-				TxData_2[3] = (APPS2_VAL >> 8) & 0xFF;
-				TxData_2[4] = 0x32;
+				AMK_TxData_L[1] = 0x07;
+				AMK_TxData_L[2] = APPS2_VAL & 0xFF;
+				AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
+				AMK_TxData_L[4] = 0x32;
 				if (RxData[1] != 0x79) {
-						memset(&TxData[2],0x00, 4*sizeof(uint8_t));
-						memset(&TxData_2[2],0x00, 4*sizeof(uint8_t));
+						memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
+						memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
 				}
 				ControlStatus = CONTROL_RUNNING;
 				break;
 			case STATUS_ERROR:
-				TxData[1] = 0x08;
-				TxData[4] = 0x00;
-				TxData[2] = 0x00;
+				AMK_TxData_R[1] = 0x08;
+				AMK_TxData_R[4] = 0x00;
+				AMK_TxData_R[2] = 0x00;
 
-				TxData_2[1] = 0x08;
-				TxData_2[4] = 0x00;
-				TxData_2[2] = 0x00;
+				AMK_TxData_L[1] = 0x08;
+				AMK_TxData_L[4] = 0x00;
+				AMK_TxData_L[2] = 0x00;
 				ControlStatus = CONTROL_ERROR_RESET;
 				break;
 			default:
 				ControlStatus = CONTROL_UNKNOWN;
 		}
 
-	HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
-	HAL_CAN_AddTxMessage(&hcan1, &TxHeader_2, TxData_2, &TxMailbox);
-	memset(&TxData[0],0x00, 8*sizeof(uint8_t));
+	HAL_CAN_AddTxMessage(&hcan1, &AMK_TxHeader_R, AMK_TxData_R, &TxMailbox);
+	HAL_CAN_AddTxMessage(&hcan1, &AMK_TxHeader_L, AMK_TxData_L, &TxMailbox);
+	memset(&AMK_TxData_R[0],0x00, 8*sizeof(uint8_t));
+	memset(&AMK_TxData_L[0],0x00, 8*sizeof(uint8_t));
   }
     /* USER CODE END WHILE */
 
