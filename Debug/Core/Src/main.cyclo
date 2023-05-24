@@ -12,5 +12,5 @@ main.c:591:13:CAN_Config	4
 main.c:624:6:HAL_CAN_RxFifo0MsgPendingCallback	24
 main.c:699:6:Start_FRT_controller	3
 main.c:727:6:Start_AMK	13
-main.c:812:6:HAL_TIM_PeriodElapsedCallback	2
-main.c:829:6:Error_Handler	1
+main.c:807:6:HAL_TIM_PeriodElapsedCallback	2
+main.c:824:6:Error_Handler	1

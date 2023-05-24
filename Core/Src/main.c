@@ -744,18 +744,14 @@ void Start_AMK(void *argument)
     } else if ((MotorStatus_R == STATUS_QUIT_DC_ON) && (MotorStatus_L == STATUS_QUIT_DC_ON)) {
 		AMK_TxData_L[1] = 0x07;
 		AMK_TxData_R[1] = 0x07;
-		memset(&AMK_TxData_R[2],0x00, 2*sizeof(uint8_t));
-		memset(&AMK_TxData_R[4],0x00, 2*sizeof(uint8_t));
-		memset(&AMK_TxData_L[2],0x00, 2*sizeof(uint8_t));
-		memset(&AMK_TxData_L[4],0x00, 2*sizeof(uint8_t));
+		memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
+		memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
 		ControlStatus = CONTROL_ENABLE;
     } else if ((MotorStatus_R == STATUS_INVERTER_ON) && (MotorStatus_L == STATUS_INVERTER_ON)) {
     	AMK_TxData_L[1] = 0x07;
     	AMK_TxData_R[1] = 0x07;
-    	memset(&AMK_TxData_R[2],0x00, 2*sizeof(uint8_t));
-    	memset(&AMK_TxData_R[4],0x00, 2*sizeof(uint8_t));
-    	memset(&AMK_TxData_L[2],0x00, 2*sizeof(uint8_t));
-    	memset(&AMK_TxData_L[4],0x00, 2*sizeof(uint8_t));
+    	memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
+    	memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
     	ControlStatus = CONTROL_INVERTER_ON;
     } else if ((MotorStatus_R == STATUS_QUIT_INVERTER_ON) && (MotorStatus_L == STATUS_QUIT_INVERTER_ON)) {
     	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
@@ -777,10 +773,8 @@ void Start_AMK(void *argument)
     	} else {
     		AMK_TxData_R[1] = 0x07;
 			AMK_TxData_L[1] = 0x07;
-			memset(&AMK_TxData_R[2],0x00, 2*sizeof(uint8_t));
-			memset(&AMK_TxData_R[4],0x00, 2*sizeof(uint8_t));
-			memset(&AMK_TxData_L[2],0x00, 2*sizeof(uint8_t));
-			memset(&AMK_TxData_L[4],0x00, 2*sizeof(uint8_t));
+			memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
+			memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
     		ControlStatus = CONTROL_TS_READY;
     	}
     } else if (MotorStatus_R == STATUS_ERROR) {
@@ -798,6 +792,7 @@ void Start_AMK(void *argument)
 	memset(&AMK_TxData_R[0],0x00, 8*sizeof(uint8_t));
 	memset(&AMK_TxData_L[0],0x00, 8*sizeof(uint8_t));
   }
+  osThreadTerminate(NULL);
   /* USER CODE END Start_AMK */
 }
 
