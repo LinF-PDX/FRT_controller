@@ -102,7 +102,9 @@ uint32_t TxMailbox;
 AMK_Status MotorStatus_R = 0;
 AMK_Status MotorStatus_L = 0;
 AMK_Control ControlStatus = 0;
-_Bool TsOn_n;
+_Bool TsOn_n = 0;
+_Bool BrakeOn = 1;
+_Bool ReadyToDrive = 0;
 
 uint16_t APPS1_VAL;
 uint16_t APPS2_VAL;
@@ -716,7 +718,8 @@ void Start_FRT_controller(void *argument)
     	//Read Ready to Drive button
     	TsOn_n = 1;
     }
-    if (RxData[1] == 0x79 && TsOn_n) {
+    if (RxData[1] == 0x79 && TsOn_n && BrakeOn) {
+    	ReadyToDrive = 1;
     	//osSemaphoreRelease(semReadytoDriveHandle);
     	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
@@ -774,18 +777,23 @@ void Start_AMK(void *argument)
     	memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
     	ControlStatus = CONTROL_INVERTER_ON;
     } else if ((MotorStatus_R == STATUS_QUIT_INVERTER_ON) && (MotorStatus_L == STATUS_QUIT_INVERTER_ON) && TsOn_n) {
-    	AMK_TxData_R[1] = 0x07;
-		AMK_TxData_L[1] = 0x07;
-		//osSemaphoreAcquire(semReadytoDriveHandle, osWaitForever);
+    	if (ReadyToDrive) {
+    		AMK_TxData_R[1] = 0x07;
+			AMK_TxData_L[1] = 0x07;
 
-		AMK_TxData_R[2] = APPS2_VAL & 0xFF;
-		AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
-		AMK_TxData_R[4] = 0x32; //set positive torque request to 50
+			AMK_TxData_R[2] = APPS2_VAL & 0xFF;
+			AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
+			AMK_TxData_R[4] = 0x32; //set positive torque request to 50
 
-		AMK_TxData_L[2] = APPS2_VAL & 0xFF;
-		AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
-		AMK_TxData_L[4] = 0x32;
-		ControlStatus = CONTROL_RUNNING;
+			AMK_TxData_L[2] = APPS2_VAL & 0xFF;
+			AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
+			AMK_TxData_L[4] = 0x32;
+			ControlStatus = CONTROL_RUNNING;
+    	} else {
+    		AMK_TxData_R[1] = 0x07;
+    		AMK_TxData_L[1] = 0x07;
+    		ControlStatus = CONTROL_TS_READY;
+    	}
     } else if (MotorStatus_R == STATUS_ERROR) {
     	AMK_TxData_R[1] = 0x08;
 		ControlStatus = CONTROL_ERROR_RESET_RIGHT;
