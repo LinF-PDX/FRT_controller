@@ -707,6 +707,12 @@ void Start_FRT_controller(void *argument)
     	//Read Ready to Drive button
     	TsOn_n = 1;
     }
+    if (TsOn_n == 1) {
+    	HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
+    	osDelay(3000);
+    	HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
+    	osThreadTerminate(controllerStartHandle);
+    }
   }
   /* USER CODE END 5 */
 }
