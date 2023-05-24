@@ -708,16 +708,17 @@ void Start_FRT_controller(void *argument)
     	TsOn_n = 1;
     }
     if (RxData[1] == 0x79) {
-//    	HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
+    	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
     	osDelay(1500);
-//    	HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
+    	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
     	osThreadTerminate(controllerStartHandle);
-    } else if (RxData[1] == 0x59 && !TsOn_n) {
+    } else if ((RxData[1] & 1) && !TsOn_n) {
 		HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, GPIO_PIN_SET);
-		osDelay(200);
+		osDelay(500);
 		HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, GPIO_PIN_RESET);
+		osDelay(450);
     }
   }
   /* USER CODE END 5 */
