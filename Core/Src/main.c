@@ -707,11 +707,17 @@ void Start_FRT_controller(void *argument)
     	//Read Ready to Drive button
     	TsOn_n = 1;
     }
-    if (TsOn_n == 1) {
-    	HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
-    	osDelay(3000);
-    	HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
+    if (RxData[1] == 0x79) {
+//    	HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
+    	osDelay(1500);
+//    	HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
     	osThreadTerminate(controllerStartHandle);
+    } else if (RxData[1] == 0x59 && !TsOn_n) {
+		HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, GPIO_PIN_SET);
+		osDelay(200);
+		HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, GPIO_PIN_RESET);
     }
   }
   /* USER CODE END 5 */
@@ -753,30 +759,17 @@ void Start_AMK(void *argument)
     	memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
     	memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
     	ControlStatus = CONTROL_INVERTER_ON;
-    } else if ((MotorStatus_R == STATUS_QUIT_INVERTER_ON) && (MotorStatus_L == STATUS_QUIT_INVERTER_ON)) {
-    	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
-    	if (TsOn_n) {
-    		AMK_TxData_R[1] = 0x07;
-			AMK_TxData_R[2] = APPS2_VAL & 0xFF;
-			AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
-			AMK_TxData_R[4] = 0x32; //set positive torque request to 50
+    } else if ((MotorStatus_R == STATUS_QUIT_INVERTER_ON) && (MotorStatus_L == STATUS_QUIT_INVERTER_ON) && TsOn_n) {
+    	AMK_TxData_R[1] = 0x07;
+		AMK_TxData_R[2] = APPS2_VAL & 0xFF;
+		AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
+		AMK_TxData_R[4] = 0x32; //set positive torque request to 50
 
-			AMK_TxData_L[1] = 0x07;
-			AMK_TxData_L[2] = APPS2_VAL & 0xFF;
-			AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
-			AMK_TxData_L[4] = 0x32;
-			if (RxData[1] != 0x79) {
-				memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
-				memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
-			}
-			ControlStatus = CONTROL_RUNNING;
-    	} else {
-    		AMK_TxData_R[1] = 0x07;
-			AMK_TxData_L[1] = 0x07;
-			memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
-			memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
-    		ControlStatus = CONTROL_TS_READY;
-    	}
+		AMK_TxData_L[1] = 0x07;
+		AMK_TxData_L[2] = APPS2_VAL & 0xFF;
+		AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
+		AMK_TxData_L[4] = 0x32;
+		ControlStatus = CONTROL_RUNNING;
     } else if (MotorStatus_R == STATUS_ERROR) {
     	AMK_TxData_R[1] = 0x08;
 		ControlStatus = CONTROL_ERROR_RESET_RIGHT;
@@ -784,6 +777,10 @@ void Start_AMK(void *argument)
     	AMK_TxData_L[1] = 0x08;
 		ControlStatus = CONTROL_ERROR_RESET_LEFT;
     } else {
+    	AMK_TxData_L[1] = 0x07;
+		AMK_TxData_R[1] = 0x07;
+		memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
+		memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
     	ControlStatus = CONTROL_UNKNOWN;
     }
 

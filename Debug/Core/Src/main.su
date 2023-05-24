@@ -11,6 +11,6 @@
 ../Core/Src/main.c:591:13:CAN_Config	48	static
 ../Core/Src/main.c:624:6:HAL_CAN_RxFifo0MsgPendingCallback	16	static
 ../Core/Src/main.c:699:6:Start_FRT_controller	16	static
-../Core/Src/main.c:727:6:Start_AMK	16	static
-../Core/Src/main.c:807:6:HAL_TIM_PeriodElapsedCallback	16	static
-../Core/Src/main.c:824:6:Error_Handler	8	static,ignoring_inline_asm
+../Core/Src/main.c:733:6:Start_AMK	16	static
+../Core/Src/main.c:804:6:HAL_TIM_PeriodElapsedCallback	16	static
+../Core/Src/main.c:821:6:Error_Handler	8	static,ignoring_inline_asm
