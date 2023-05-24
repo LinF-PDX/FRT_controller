@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <string.h>
+#include <stdbool.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -36,6 +37,7 @@ typedef enum {
 	STATUS_QUIT_INVERTER_ON, //Running status
 	STATUS_DERATING,
 	STATUS_ERROR,
+	STATUS_RUNNING,
 } AMK_Status;
 
 typedef enum {
@@ -43,6 +45,7 @@ typedef enum {
 	CONTROL_DC_ON,
 	CONTROL_ENABLE,
 	CONTROL_INVERTER_ON,
+	CONTROL_TS_READY,
 	CONTROL_ERROR_RESET_RIGHT,
 	CONTROL_ERROR_RESET_LEFT,
 	CONTROL_RUNNING,
@@ -94,6 +97,7 @@ uint32_t TxMailbox;
 AMK_Status MotorStatus_R = 0;
 AMK_Status MotorStatus_L = 0;
 AMK_Control ControlStatus = 0;
+_Bool TsOn_n;
 
 uint16_t APPS1_VAL;
 uint16_t APPS2_VAL;
@@ -699,6 +703,10 @@ void Start_FRT_controller(void *argument)
   for(;;)
   {
     osDelay(50);
+    if (HAL_GPIO_ReadPin(START_BTN_n_GPIO_Port, START_BTN_n_Pin) == 0) {
+    	//Read Ready to Drive button
+    	TsOn_n = 1;
+    }
   }
   /* USER CODE END 5 */
 }
@@ -716,6 +724,7 @@ void Start_AMK(void *argument)
   /* Infinite loop */
   for(;;)
   {
+
     osDelay(5);
     APPS2_VAL = APPS2_ADC_Percent()*500;
 
@@ -735,7 +744,6 @@ void Start_AMK(void *argument)
 		memset(&AMK_TxData_L[4],0x00, 2*sizeof(uint8_t));
 		ControlStatus = CONTROL_ENABLE;
     } else if ((MotorStatus_R == STATUS_INVERTER_ON) && (MotorStatus_L == STATUS_INVERTER_ON)) {
-    	HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, 1);
     	AMK_TxData_L[1] = 0x07;
     	AMK_TxData_R[1] = 0x07;
     	memset(&AMK_TxData_R[2],0x00, 2*sizeof(uint8_t));
@@ -744,20 +752,31 @@ void Start_AMK(void *argument)
     	memset(&AMK_TxData_L[4],0x00, 2*sizeof(uint8_t));
     	ControlStatus = CONTROL_INVERTER_ON;
     } else if ((MotorStatus_R == STATUS_QUIT_INVERTER_ON) && (MotorStatus_L == STATUS_QUIT_INVERTER_ON)) {
-    	AMK_TxData_R[1] = 0x07;
-		AMK_TxData_R[2] = APPS2_VAL & 0xFF;
-		AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
-		AMK_TxData_R[4] = 0x32; //set positive torque request to 50
+    	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
+    	if (TsOn_n) {
+    		AMK_TxData_R[1] = 0x07;
+			AMK_TxData_R[2] = APPS2_VAL & 0xFF;
+			AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
+			AMK_TxData_R[4] = 0x32; //set positive torque request to 50
 
-		AMK_TxData_L[1] = 0x07;
-		AMK_TxData_L[2] = APPS2_VAL & 0xFF;
-		AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
-		AMK_TxData_L[4] = 0x32;
-		if (RxData[1] != 0x79) {
-			memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
-			memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
-		}
-		ControlStatus = CONTROL_RUNNING;
+			AMK_TxData_L[1] = 0x07;
+			AMK_TxData_L[2] = APPS2_VAL & 0xFF;
+			AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
+			AMK_TxData_L[4] = 0x32;
+			if (RxData[1] != 0x79) {
+				memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
+				memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
+			}
+			ControlStatus = CONTROL_RUNNING;
+    	} else {
+    		AMK_TxData_R[1] = 0x07;
+			AMK_TxData_L[1] = 0x07;
+			memset(&AMK_TxData_R[2],0x00, 2*sizeof(uint8_t));
+			memset(&AMK_TxData_R[4],0x00, 2*sizeof(uint8_t));
+			memset(&AMK_TxData_L[2],0x00, 2*sizeof(uint8_t));
+			memset(&AMK_TxData_L[4],0x00, 2*sizeof(uint8_t));
+    		ControlStatus = CONTROL_TS_READY;
+    	}
     } else if (MotorStatus_R == STATUS_ERROR) {
     	AMK_TxData_R[1] = 0x08;
 		ControlStatus = CONTROL_ERROR_RESET_RIGHT;
@@ -767,62 +786,6 @@ void Start_AMK(void *argument)
     } else {
     	ControlStatus = CONTROL_UNKNOWN;
     }
-
-//	switch (MotorStatus_R) {
-//			case STATUS_SYSTEM_READY:
-//				AMK_TxData_R[1] = 0x02;
-//
-//				AMK_TxData_L[1] = 0x02;
-//				ControlStatus = CONTROL_DC_ON;
-//				break;
-//			case STATUS_QUIT_DC_ON:
-//				AMK_TxData_R[1] = 0x07;
-//				AMK_TxData_R[2] = 0x00;
-//				AMK_TxData_R[4] = 0x00;
-//
-//				AMK_TxData_L[1] = 0x07;
-//				AMK_TxData_L[2] = 0x00;
-//				AMK_TxData_L[4] = 0x00;
-//				ControlStatus = CONTROL_ENABLE;
-//				break;
-//			case STATUS_INVERTER_ON:
-//				AMK_TxData_R[1] = 0x07;
-//				memset(&AMK_TxData_R[2],0x00, 2*sizeof(uint8_t));
-//				memset(&AMK_TxData_R[4],0x00, 2*sizeof(uint8_t));
-//
-//				AMK_TxData_L[1] = 0x07;
-//				AMK_TxData_L[2] = 0x00;
-//				AMK_TxData_L[4] = 0x00;
-//				ControlStatus = CONTROL_INVERTER_ON;
-//			case STATUS_QUIT_INVERTER_ON:
-//				AMK_TxData_R[1] = 0x07;
-//				AMK_TxData_R[2] = APPS2_VAL & 0xFF;
-//				AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
-//				AMK_TxData_R[4] = 0x32; //set positive torque request to 50
-//
-//				AMK_TxData_L[1] = 0x07;
-//				AMK_TxData_L[2] = APPS2_VAL & 0xFF;
-//				AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
-//				AMK_TxData_L[4] = 0x32;
-//				if (RxData[1] != 0x79) {
-//						memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
-//						memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
-//				}
-//				ControlStatus = CONTROL_RUNNING;
-//				break;
-//			case STATUS_ERROR:
-//				AMK_TxData_R[1] = 0x08;
-//				AMK_TxData_R[4] = 0x00;
-//				AMK_TxData_R[2] = 0x00;
-//
-//				AMK_TxData_L[1] = 0x08;
-//				AMK_TxData_L[4] = 0x00;
-//				AMK_TxData_L[2] = 0x00;
-//				ControlStatus = CONTROL_ERROR_RESET;
-//				break;
-//			default:
-//				ControlStatus = CONTROL_UNKNOWN;
-//		}
 
 	HAL_CAN_AddTxMessage(&hcan1, &AMK_TxHeader_R, AMK_TxData_R, &TxMailbox);
 	HAL_CAN_AddTxMessage(&hcan1, &AMK_TxHeader_L, AMK_TxData_L, &TxMailbox);
