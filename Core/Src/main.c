@@ -84,6 +84,11 @@ const osThreadAttr_t motorControl_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
+/* Definitions for semReadytoDrive */
+osSemaphoreId_t semReadytoDriveHandle;
+const osSemaphoreAttr_t semReadytoDrive_attributes = {
+  .name = "semReadytoDrive"
+};
 /* USER CODE BEGIN PV */
 CAN_TxHeaderTypeDef AMK_TxHeader_R;
 CAN_TxHeaderTypeDef AMK_TxHeader_L;
@@ -220,6 +225,10 @@ int main(void)
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
+
+  /* Create the semaphores(s) */
+  /* creation of semReadytoDrive */
+  semReadytoDriveHandle = osSemaphoreNew(1, 1, &semReadytoDrive_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -707,7 +716,8 @@ void Start_FRT_controller(void *argument)
     	//Read Ready to Drive button
     	TsOn_n = 1;
     }
-    if (RxData[1] == 0x79) {
+    if (RxData[1] == 0x79 && TsOn_n) {
+    	//osSemaphoreRelease(semReadytoDriveHandle);
     	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
     	osDelay(1500);
@@ -719,6 +729,9 @@ void Start_FRT_controller(void *argument)
 		osDelay(500);
 		HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, GPIO_PIN_RESET);
 		osDelay(450);
+    } else if (TsOn_n) {
+    	//Send CAN messages to close AIRs
+		HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, GPIO_PIN_SET);
     }
   }
   /* USER CODE END 5 */
@@ -762,11 +775,13 @@ void Start_AMK(void *argument)
     	ControlStatus = CONTROL_INVERTER_ON;
     } else if ((MotorStatus_R == STATUS_QUIT_INVERTER_ON) && (MotorStatus_L == STATUS_QUIT_INVERTER_ON) && TsOn_n) {
     	AMK_TxData_R[1] = 0x07;
+		AMK_TxData_L[1] = 0x07;
+		//osSemaphoreAcquire(semReadytoDriveHandle, osWaitForever);
+
 		AMK_TxData_R[2] = APPS2_VAL & 0xFF;
 		AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
 		AMK_TxData_R[4] = 0x32; //set positive torque request to 50
 
-		AMK_TxData_L[1] = 0x07;
 		AMK_TxData_L[2] = APPS2_VAL & 0xFF;
 		AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
 		AMK_TxData_L[4] = 0x32;
