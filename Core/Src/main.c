@@ -721,7 +721,7 @@ void Start_FRT_controller(void *argument)
 		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
 
 		//Terminate thread when vehicle is ready to drive
-    	osThreadTerminate(controllerStartHandle);
+    	osThreadSuspend(controllerStartHandle);
     } else if ((RxData[1] & 1) && !TsOn_n) {
     	//Blink the status LED when AMK is ready
 		HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, GPIO_PIN_SET);
@@ -777,6 +777,8 @@ void Start_AMK(void *argument)
 		memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
 		ControlStatus = CONTROL_ENABLE;
     } else if ((MotorStatus_R == STATUS_INVERTER_ON) && (MotorStatus_L == STATUS_INVERTER_ON)) {
+    	ReadyToDrive = 0;
+    	osThreadResume(controllerStartHandle);
     	AMK_TxData_L[1] = 0x07;
     	AMK_TxData_R[1] = 0x07;
     	memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
@@ -803,12 +805,15 @@ void Start_AMK(void *argument)
     		ControlStatus = CONTROL_TS_READY;
     	}
     } else if (MotorStatus_R == STATUS_ERROR) {
+    	ReadyToDrive = 0;
     	AMK_TxData_R[1] = 0x08;
 		ControlStatus = CONTROL_ERROR_RESET_RIGHT;
     } else if (MotorStatus_L == STATUS_ERROR) {
+    	ReadyToDrive = 0;
     	AMK_TxData_L[1] = 0x08;
 		ControlStatus = CONTROL_ERROR_RESET_LEFT;
     } else {
+    	ReadyToDrive = 0;
     	AMK_TxData_L[1] = 0x07;
 		AMK_TxData_R[1] = 0x07;
 		memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
