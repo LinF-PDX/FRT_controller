@@ -84,11 +84,6 @@ const osThreadAttr_t motorControl_attributes = {
   .stack_size = 128 * 4,
   .priority = (osPriority_t) osPriorityAboveNormal,
 };
-/* Definitions for semReadytoDrive */
-osSemaphoreId_t semReadytoDriveHandle;
-const osSemaphoreAttr_t semReadytoDrive_attributes = {
-  .name = "semReadytoDrive"
-};
 /* USER CODE BEGIN PV */
 CAN_TxHeaderTypeDef AMK_TxHeader_R;
 CAN_TxHeaderTypeDef AMK_TxHeader_L;
@@ -103,7 +98,7 @@ AMK_Status MotorStatus_R = 0;
 AMK_Status MotorStatus_L = 0;
 AMK_Control ControlStatus = 0;
 _Bool TsOn_n = 0;
-_Bool BrakeOn = 1;
+_Bool BrakeOn = 0;
 _Bool ReadyToDrive = 0;
 
 uint16_t APPS1_VAL;
@@ -227,10 +222,6 @@ int main(void)
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
-
-  /* Create the semaphores(s) */
-  /* creation of semReadytoDrive */
-  semReadytoDriveHandle = osSemaphoreNew(1, 1, &semReadytoDrive_attributes);
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
   /* add semaphores, ... */
@@ -756,6 +747,11 @@ void Start_AMK(void *argument)
 
     osDelay(5);
     APPS2_VAL = APPS2_ADC_Percent()*500;
+    if (APPS2_VAL >= 450) {
+    	BrakeOn = 1;
+    } else {
+    	BrakeOn = 0;
+    }
 
 	//HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
 	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
@@ -781,12 +777,12 @@ void Start_AMK(void *argument)
     		AMK_TxData_R[1] = 0x07;
 			AMK_TxData_L[1] = 0x07;
 
-			AMK_TxData_R[2] = APPS2_VAL & 0xFF;
-			AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
+			AMK_TxData_R[2] = 0xFF;		//APPS2_VAL & 0xFF;
+			AMK_TxData_R[3] = 0x01;		//(APPS2_VAL >> 8) & 0xFF;
 			AMK_TxData_R[4] = 0x32; //set positive torque request to 50
 
-			AMK_TxData_L[2] = APPS2_VAL & 0xFF;
-			AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
+			AMK_TxData_L[2] = 0xFF;		//APPS2_VAL & 0xFF;
+			AMK_TxData_L[3] = 0x01;		//(APPS2_VAL >> 8) & 0xFF;
 			AMK_TxData_L[4] = 0x32;
 			ControlStatus = CONTROL_RUNNING;
     	} else {
