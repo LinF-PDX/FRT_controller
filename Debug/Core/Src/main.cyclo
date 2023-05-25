@@ -11,6 +11,6 @@ main.c:551:13:MX_GPIO_Init	1
 main.c:593:13:CAN_Config	4
 main.c:626:6:HAL_CAN_RxFifo0MsgPendingCallback	24
 main.c:701:6:Start_FRT_controller	8
-main.c:741:6:Start_AMK	14
-main.c:824:6:HAL_TIM_PeriodElapsedCallback	2
-main.c:841:6:Error_Handler	1
+main.c:746:6:Start_AMK	13
+main.c:836:6:HAL_TIM_PeriodElapsedCallback	2
+main.c:853:6:Error_Handler	1

@@ -98,7 +98,7 @@ AMK_Status MotorStatus_R = 0;
 AMK_Status MotorStatus_L = 0;
 AMK_Control ControlStatus = 0;
 _Bool TsOn_n = 0;
-_Bool BrakeOn = 0;
+_Bool BrakeOn = 1; //FOR TESTING ONLY, needs to be 0 in production
 _Bool ReadyToDrive = 0;
 
 uint16_t APPS1_VAL;
@@ -710,15 +710,20 @@ void Start_FRT_controller(void *argument)
     	TsOn_n = 1;
     }
     if (RxData[1] == 0x79 && TsOn_n && BrakeOn) {
+    	//Set ready to drive flag when all procedures are met
     	ReadyToDrive = 1;
-    	//osSemaphoreRelease(semReadytoDriveHandle);
+    	//Sound read to drive speaker for 2s
+
     	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
-    	osDelay(1500);
+    	osDelay(2000);
     	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
+
+		//Terminate thread when vehicle is ready to drive
     	osThreadTerminate(controllerStartHandle);
     } else if ((RxData[1] & 1) && !TsOn_n) {
+    	//Blink the status LED when AMK is ready
 		HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, GPIO_PIN_SET);
 		osDelay(500);
 		HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, GPIO_PIN_RESET);
@@ -746,17 +751,22 @@ void Start_AMK(void *argument)
   {
 
     osDelay(5);
+    //Read accelerator position
     APPS2_VAL = APPS2_ADC_Percent()*500;
-    if (APPS2_VAL >= 450) {
-    	BrakeOn = 1;
-    } else {
-    	BrakeOn = 0;
-    }
+    //Read brake pressure
+//    if (APPS2_VAL >= 450) {
+//    	BrakeOn = 1;
+//    	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
+//    } else {
+//    	BrakeOn = 0;
+//    	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
+//    }
 
 	//HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
 	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
 
     if ((MotorStatus_R == STATUS_SYSTEM_READY) && (MotorStatus_L == STATUS_SYSTEM_READY)) {
+    	//Perform AMK start-up sequence
     	AMK_TxData_R[1] = 0x02;
     	AMK_TxData_L[1] = 0x02;
 		ControlStatus = CONTROL_DC_ON;
@@ -777,17 +787,19 @@ void Start_AMK(void *argument)
     		AMK_TxData_R[1] = 0x07;
 			AMK_TxData_L[1] = 0x07;
 
-			AMK_TxData_R[2] = 0xFF;		//APPS2_VAL & 0xFF;
-			AMK_TxData_R[3] = 0x01;		//(APPS2_VAL >> 8) & 0xFF;
+			AMK_TxData_R[2] = APPS2_VAL & 0xFF;
+			AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
 			AMK_TxData_R[4] = 0x32; //set positive torque request to 50
 
-			AMK_TxData_L[2] = 0xFF;		//APPS2_VAL & 0xFF;
-			AMK_TxData_L[3] = 0x01;		//(APPS2_VAL >> 8) & 0xFF;
+			AMK_TxData_L[2] = APPS2_VAL & 0xFF;
+			AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
 			AMK_TxData_L[4] = 0x32;
 			ControlStatus = CONTROL_RUNNING;
     	} else {
     		AMK_TxData_R[1] = 0x07;
     		AMK_TxData_L[1] = 0x07;
+    		memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
+    		memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
     		ControlStatus = CONTROL_TS_READY;
     	}
     } else if (MotorStatus_R == STATUS_ERROR) {
