@@ -10,7 +10,7 @@ main.c:514:13:MX_CAN3_Init	2
 main.c:551:13:MX_GPIO_Init	1
 main.c:593:13:CAN_Config	4
 main.c:626:6:HAL_CAN_RxFifo0MsgPendingCallback	24
-main.c:701:6:Start_FRT_controller	8
-main.c:746:6:Start_AMK	16
-main.c:846:6:HAL_TIM_PeriodElapsedCallback	2
-main.c:863:6:Error_Handler	1
+main.c:701:6:Start_FRT_controller	10
+main.c:750:6:Start_AMK	16
+main.c:850:6:HAL_TIM_PeriodElapsedCallback	2
+main.c:867:6:Error_Handler	1

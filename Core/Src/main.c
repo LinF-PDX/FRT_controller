@@ -714,11 +714,11 @@ void Start_FRT_controller(void *argument)
     	ReadyToDrive = 1;
     	//Sound read to drive speaker for 2s
 
-    	HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
-		//HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
+    	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
     	osDelay(2000);
-    	HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
-		//HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
+    	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
 
 		//Terminate thread when vehicle is ready to drive
     	osThreadSuspend(controllerStartHandle);
@@ -730,6 +730,10 @@ void Start_FRT_controller(void *argument)
 		osDelay(450);
     } else if (TsOn_n) {
     	//Send CAN messages to close AIRs
+    	while ((MotorStatus_R == STATUS_DERATING) && (MotorStatus_R == STATUS_DERATING)) {
+    		osDelay(50);
+    		HAL_GPIO_TogglePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin);
+    	}
 		HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, GPIO_PIN_SET);
     }
   }
@@ -816,7 +820,7 @@ void Start_AMK(void *argument)
     	AMK_TxData_L[1] = 0x08;
 		ControlStatus = CONTROL_ERROR_RESET_LEFT;
     } else if ((MotorStatus_R == STATUS_DERATING) && (MotorStatus_L == STATUS_DERATING)) {
-    	TsOn_n = 0;
+    	//TsOn_n = 0;
     } else {
     	ReadyToDrive = 0;
     	AMK_TxData_L[1] = 0x07;
