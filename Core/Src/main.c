@@ -714,11 +714,11 @@ void Start_FRT_controller(void *argument)
     	ReadyToDrive = 1;
     	//Sound read to drive speaker for 2s
 
-    	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
+    	HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
+		//HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
     	osDelay(2000);
-    	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
+    	HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
+		//HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
 
 		//Terminate thread when vehicle is ready to drive
     	osThreadSuspend(controllerStartHandle);
@@ -754,13 +754,13 @@ void Start_AMK(void *argument)
     //Read accelerator position
     APPS2_VAL = APPS2_ADC_Percent()*500;
     //Read brake pressure
-//    if (APPS2_VAL >= 450) {
-//    	BrakeOn = 1;
-//    	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
-//    } else {
-//    	BrakeOn = 0;
-//    	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
-//    }
+    if (APPS2_VAL >= 450) {
+    	BrakeOn = 1;
+    	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
+    } else {
+    	BrakeOn = 0;
+    	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
+    }
 
 	//HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
 	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
@@ -777,7 +777,6 @@ void Start_AMK(void *argument)
 		memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
 		ControlStatus = CONTROL_ENABLE;
     } else if ((MotorStatus_R == STATUS_INVERTER_ON) && (MotorStatus_L == STATUS_INVERTER_ON)) {
-    	ReadyToDrive = 0;
     	osThreadResume(controllerStartHandle);
     	AMK_TxData_L[1] = 0x07;
     	AMK_TxData_R[1] = 0x07;
@@ -789,12 +788,16 @@ void Start_AMK(void *argument)
     		AMK_TxData_R[1] = 0x07;
 			AMK_TxData_L[1] = 0x07;
 
-			AMK_TxData_R[2] = APPS2_VAL & 0xFF;
-			AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
+//			AMK_TxData_R[2] = APPS2_VAL & 0xFF;
+//			AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
+			AMK_TxData_R[2] = 0xFF;
+			AMK_TxData_R[3] = 0x01;
 			AMK_TxData_R[4] = 0x32; //set positive torque request to 50
 
-			AMK_TxData_L[2] = APPS2_VAL & 0xFF;
-			AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
+//			AMK_TxData_L[2] = APPS2_VAL & 0xFF;
+//			AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
+			AMK_TxData_L[2] = 0xFF;
+			AMK_TxData_L[3] = 0x01;
 			AMK_TxData_L[4] = 0x32;
 			ControlStatus = CONTROL_RUNNING;
     	} else {
@@ -812,6 +815,8 @@ void Start_AMK(void *argument)
     	ReadyToDrive = 0;
     	AMK_TxData_L[1] = 0x08;
 		ControlStatus = CONTROL_ERROR_RESET_LEFT;
+    } else if ((MotorStatus_R == STATUS_DERATING) && (MotorStatus_L == STATUS_DERATING)) {
+    	TsOn_n = 0;
     } else {
     	ReadyToDrive = 0;
     	AMK_TxData_L[1] = 0x07;
