@@ -65,6 +65,7 @@ typedef enum {
 #define APPS2_MIN_VALUE (5u)
 #define BPPS_MAX_VALUE (25u)
 #define BPPS_MIN_VALUE (10u)
+#define MAX_ADC_VALUE (4095u)
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
@@ -127,7 +128,7 @@ static void CAN_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-float APPS1_ADC_Percent(void) {
+uint8_t APPS1_ADC_Percent(void) {
 	uint16_t ADC_VAL;
 	float ADC_Percent;
 	uint8_t ADC_Out;
@@ -136,12 +137,15 @@ float APPS1_ADC_Percent(void) {
 	HAL_ADC_PollForConversion(&hadc1, 10);
 	ADC_VAL = HAL_ADC_GetValue(&hadc1);
 	HAL_ADC_Stop(&hadc1);
-	ADC_Percent = (ADC_VAL/4095)*100;
+	ADC_Percent = (ADC_VAL/MAX_ADC_VALUE)*100;
 	ADC_Out = (ADC_Percent - APPS1_MIN_VALUE)*(100/(APPS1_MAX_VALUE - APPS1_MIN_VALUE)); 	//apps1 travel from 15% to 85%
+	if (ADC_Out < 0) {
+		ADC_Out = 0;
+	}
 	return ADC_Out; //returns ADC percentage ranges from 0-1
 }
 
-float APPS2_ADC_Percent(void) {
+uint8_t APPS2_ADC_Percent(void) {
 	uint16_t ADC_VAL;
 	float ADC_Percent;
 	uint8_t ADC_Out;
@@ -150,19 +154,29 @@ float APPS2_ADC_Percent(void) {
 	HAL_ADC_PollForConversion(&hadc2, 10);
 	ADC_VAL = HAL_ADC_GetValue(&hadc2);
 	HAL_ADC_Stop(&hadc2);
-	ADC_Percent = (ADC_VAL/4095)*100;
+	ADC_Percent = (ADC_VAL/MAX_ADC_VALUE)*100;
 	ADC_Out = (ADC_Percent - APPS2_MIN_VALUE)*(100/(APPS2_MAX_VALUE - APPS2_MIN_VALUE));
+	if (ADC_Out < 0) {
+			ADC_Out = 0;
+	}
 	return ADC_Out;
 }
 
-float BPPS_ADC_Percent(void) {
+uint8_t BPPS_ADC_Percent(void) {
 	uint16_t ADC_VAL;
+	float ADC_Percent;
+	uint8_t ADC_Out;
 
 	HAL_ADC_Start(&hadc3);
 	HAL_ADC_PollForConversion(&hadc3, 10);
 	ADC_VAL = HAL_ADC_GetValue(&hadc3);
 	HAL_ADC_Stop(&hadc3);
-	return (float)ADC_VAL/4095;
+	ADC_Percent = (ADC_VAL/MAX_ADC_VALUE)*100;
+	ADC_Out = (ADC_Percent - BPPS_MIN_VALUE)*(100/(BPPS_MAX_VALUE - BPPS_MIN_VALUE));
+	if (ADC_Out < 0) {
+			ADC_Out = 0;
+	}
+	return ADC_Out;
 }
 
 /* USER CODE END 0 */
