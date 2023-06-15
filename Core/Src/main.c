@@ -98,7 +98,7 @@ AMK_Status MotorStatus_R = 0;
 AMK_Status MotorStatus_L = 0;
 AMK_Control ControlStatus = 0;
 _Bool TsOn_n = 0;
-_Bool BrakeOn = 1; //FOR TESTING ONLY, needs to be 0 in production
+_Bool BrakeOn = 0; //FOR TESTING ONLY, needs to be 0 in production
 _Bool ReadyToDrive = 0;
 
 uint16_t APPS1_VAL;
@@ -124,12 +124,15 @@ static void CAN_Config(void);
 /* USER CODE BEGIN 0 */
 float APPS1_ADC_Percent(void) {
 	uint16_t ADC_VAL;
+	float ADC_Percent;
 
 	HAL_ADC_Start(&hadc1);
 	HAL_ADC_PollForConversion(&hadc1, 10);
 	ADC_VAL = HAL_ADC_GetValue(&hadc1);
 	HAL_ADC_Stop(&hadc1);
-	return (float)ADC_VAL/4095; //returns ADC percentage ranges from 0-1
+	ADC_Percent = (ADC_VAL/4095)*100;
+	ADC_Percent = (ADC_Percent - 15)*(100/85); 	//apps1 travel from 15% to 85%
+	return ADC_Percent; //returns ADC percentage ranges from 0-1
 }
 
 float APPS2_ADC_Percent(void) {
@@ -139,6 +142,16 @@ float APPS2_ADC_Percent(void) {
 	HAL_ADC_PollForConversion(&hadc2, 10);
 	ADC_VAL = HAL_ADC_GetValue(&hadc2);
 	HAL_ADC_Stop(&hadc2);
+	return (float)ADC_VAL/4095;
+}
+
+float BPPS_ADC_Percent(void) {
+	uint16_t ADC_VAL;
+
+	HAL_ADC_Start(&hadc3);
+	HAL_ADC_PollForConversion(&hadc3, 10);
+	ADC_VAL = HAL_ADC_GetValue(&hadc3);
+	HAL_ADC_Stop(&hadc3);
 	return (float)ADC_VAL/4095;
 }
 
@@ -715,10 +728,10 @@ void Start_FRT_controller(void *argument)
     	//Sound read to drive speaker for 2s
 
     	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
     	osDelay(2000);
     	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
 
 		//Terminate thread when vehicle is ready to drive
     	osThreadSuspend(controllerStartHandle);
@@ -756,9 +769,9 @@ void Start_AMK(void *argument)
 
     osDelay(5);
     //Read accelerator position
-    APPS2_VAL = APPS2_ADC_Percent()*500;
+    APPS1_VAL = APPS1_ADC_Percent()*500;
     //Read brake pressure
-    if (APPS2_VAL >= 450) {
+    if (APPS1_VAL >= 450) {
     	BrakeOn = 1;
     	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
     } else {
