@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include <string.h>
 #include <stdbool.h>
+#include <stdlib.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -106,9 +107,11 @@ AMK_Control ControlStatus = 0;
 _Bool TsOn_n = 0;
 _Bool BrakeOn = 0; //FOR TESTING ONLY, needs to be 0 in production
 _Bool ReadyToDrive = 0;
+_Bool PedalConflict = 0;
 
 uint16_t APPS1_VAL;
 uint16_t APPS2_VAL;
+uint16_t BPPS_VAL;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -793,14 +796,28 @@ void Start_AMK(void *argument)
 
     osDelay(5);
     //Read accelerator position
-    APPS1_VAL = APPS1_ADC_Percent()*500;
+    APPS1_VAL = APPS1_ADC_Percent();
+    APPS2_VAL = APPS2_ADC_Percent();
+    BPPS_VAL = BPPS_ADC_Percent();
+
+    APPS1_VAL = APPS1_VAL*500;
     //Read brake pressure
-    if (APPS1_VAL >= 450) {
+    if (BPPS_VAL > 0) {
     	BrakeOn = 1;
     	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
     } else {
     	BrakeOn = 0;
     	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
+    }
+    //Check if APPS and brake are both on
+    if (BrakeOn && (APPS1_VAL > 25)) {
+    	PedalConflict = 1;
+    } else if ((BrakeOn == 0) && (APPS1_VAL < 5)) {
+    	PedalConflict = 0;
+    }
+    //Check for accelerator plausibility
+    if (abs(APPS1_VAL - APPS2_VAL) >= 10){
+    	ReadyToDrive = 0;
     }
 
 	//HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
@@ -825,20 +842,20 @@ void Start_AMK(void *argument)
     	memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
     	ControlStatus = CONTROL_INVERTER_ON;
     } else if ((MotorStatus_R == STATUS_QUIT_INVERTER_ON) && (MotorStatus_L == STATUS_QUIT_INVERTER_ON) && TsOn_n) {
-    	if (ReadyToDrive) {
+    	if (ReadyToDrive && (PedalConflict == 0)) {
     		AMK_TxData_R[1] = 0x07;
 			AMK_TxData_L[1] = 0x07;
 
-//			AMK_TxData_R[2] = APPS2_VAL & 0xFF;
-//			AMK_TxData_R[3] = (APPS2_VAL >> 8) & 0xFF;
-			AMK_TxData_R[2] = 0xFF;
-			AMK_TxData_R[3] = 0x01;
+			AMK_TxData_R[2] = APPS1_VAL & 0xFF;
+			AMK_TxData_R[3] = (APPS1_VAL >> 8) & 0xFF;
+//			AMK_TxData_R[2] = 0xFF;
+//			AMK_TxData_R[3] = 0x01;
 			AMK_TxData_R[4] = 0x32; //set positive torque request to 50
 
-//			AMK_TxData_L[2] = APPS2_VAL & 0xFF;
-//			AMK_TxData_L[3] = (APPS2_VAL >> 8) & 0xFF;
-			AMK_TxData_L[2] = 0xFF;
-			AMK_TxData_L[3] = 0x01;
+			AMK_TxData_L[2] = APPS1_VAL & 0xFF;
+			AMK_TxData_L[3] = (APPS1_VAL >> 8) & 0xFF;
+//			AMK_TxData_L[2] = 0xFF;
+//			AMK_TxData_L[3] = 0x01;
 			AMK_TxData_L[4] = 0x32;
 			ControlStatus = CONTROL_RUNNING;
     	} else {
