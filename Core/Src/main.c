@@ -77,11 +77,11 @@ CAN_HandleTypeDef hcan1;
 CAN_HandleTypeDef hcan3;
 
 /* USER CODE BEGIN PV */
-CAN_TxHeaderTypeDef AMK_TxHeader_R;
+CAN_TxHeaderTypeDef TxHeader;
 CAN_TxHeaderTypeDef AMK_TxHeader_L;
 CAN_RxHeaderTypeDef RxHeader;
 CAN_RxHeaderTypeDef RxHeader_2;
-uint8_t AMK_TxData_R[8];
+uint8_t TxData[8];
 uint8_t AMK_TxData_L[8];
 uint8_t RxData[8];
 uint8_t RxData_2[8];
@@ -91,7 +91,7 @@ AMK_Status MotorStatus_L = 0;
 AMK_Control ControlStatus = 0;
 _Bool TsOn_n = 0;
 _Bool BrakeOn = 0; //FOR TESTING ONLY, needs to be 0 in production
-_Bool ReadyToDrive = 0;
+_Bool ReadyToDrive_n = 0;
 _Bool PedalConflict = 0;
 
 uint16_t APPS1_VAL;
@@ -126,20 +126,20 @@ uint16_t APPS1_ADC_Percent(void) {
 uint16_t APPS2_ADC_Percent(void) {
 	uint16_t ADC_VAL;
 
-	HAL_ADC_Start(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 10);
-	ADC_VAL = HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_Stop(&hadc1);
+	HAL_ADC_Start(&hadc2);
+	HAL_ADC_PollForConversion(&hadc2, 10);
+	ADC_VAL = HAL_ADC_GetValue(&hadc2);
+	HAL_ADC_Stop(&hadc2);
 	return ADC_VAL;
 }
 
 uint16_t BPPS_ADC_Percent(void) {
 	uint16_t ADC_VAL;
 
-	HAL_ADC_Start(&hadc1);
-	HAL_ADC_PollForConversion(&hadc1, 10);
-	ADC_VAL = HAL_ADC_GetValue(&hadc1);
-	HAL_ADC_Stop(&hadc1);
+	HAL_ADC_Start(&hadc3);
+	HAL_ADC_PollForConversion(&hadc3, 10);
+	ADC_VAL = HAL_ADC_GetValue(&hadc3);
+	HAL_ADC_Stop(&hadc3);
 	return ADC_VAL;
 }
 
@@ -186,41 +186,43 @@ int main(void)
 	  Error_Handler();
 	}
 	// Initialize TxHeader and TxData
-	AMK_TxHeader_R.DLC = 8;
-	AMK_TxHeader_R.IDE = CAN_ID_STD;
-	AMK_TxHeader_R.RTR = CAN_RTR_DATA;
-	AMK_TxHeader_R.StdId = 0x186;
-	AMK_TxHeader_R.TransmitGlobalTime = DISABLE;
+	TxHeader.DLC = 8;
+	TxHeader.IDE = CAN_ID_STD;
+	TxHeader.RTR = CAN_RTR_DATA;
+	TxHeader.StdId = 0x1FF;
+	TxHeader.TransmitGlobalTime = DISABLE;
 
-	AMK_TxData_R[0] = 0x00;
-	AMK_TxData_R[1] = 0x00;
-	AMK_TxData_R[2] = 0x00;
-	AMK_TxData_R[3] = 0x00;
-	AMK_TxData_R[4] = 0x00;
-	AMK_TxData_R[5] = 0x00;
-	AMK_TxData_R[6] = 0x00;
-	AMK_TxData_R[7] = 0x00;
-
-	AMK_TxHeader_L.DLC = 8;
-	AMK_TxHeader_L.IDE = CAN_ID_STD;
-	AMK_TxHeader_L.RTR = CAN_RTR_DATA;
-	AMK_TxHeader_L.StdId = 0x185;
-	AMK_TxHeader_L.TransmitGlobalTime = DISABLE;
-
-	AMK_TxData_L[0] = 0x00;
-	AMK_TxData_L[1] = 0x00;
-	AMK_TxData_L[2] = 0x00;
-	AMK_TxData_L[3] = 0x00;
-	AMK_TxData_L[4] = 0x00;
-	AMK_TxData_L[5] = 0x00;
-	AMK_TxData_L[6] = 0x00;
-	AMK_TxData_L[7] = 0x00;
+	TxData[0] = 0x00;
+	TxData[1] = 0x00;
+	TxData[2] = 0x00;
+	TxData[3] = 0x00;
+	TxData[4] = 0x00;
+	TxData[5] = 0x00;
+	TxData[6] = 0x00;
+	TxData[7] = 0x00;
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  HAL_Delay(5);
+	  APPS1_VAL = APPS1_ADC_Percent();
+	  APPS2_VAL = APPS2_ADC_Percent();
+	  BPPS_VAL = BPPS_ADC_Percent();
+	  ReadyToDrive_n = HAL_GPIO_ReadPin(RTDS_EN_GPIO_Port, RTDS_EN_Pin);
+
+	  TxData[1] = ReadyToDrive_n;
+	  TxData[2] = APPS1_VAL & 0xFF;
+	  TxData[3] = (APPS1_VAL >> 8) & 0xFF;
+	  TxData[4] = APPS2_VAL & 0xFF;
+	  TxData[5] = (APPS2_VAL >> 8) & 0xFF;
+	  TxData[6] = BPPS_VAL & 0xFF;
+	  TxData[7] = (BPPS_VAL >> 8) & 0xFF;
+
+	  HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
+	  memset(&TxData[0],0x00, 8*sizeof(uint8_t));
+
 
   }
     /* USER CODE END WHILE */
@@ -590,91 +592,24 @@ static void CAN_Config(void)
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
 	//Get Rx message
-	if (HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &RxHeader, RxData) != HAL_OK) {
+	if (HAL_CAN_GetRxMessage(&hcan3, CAN_RX_FIFO0, &RxHeader, RxData) != HAL_OK) {
 		Error_Handler();
 	}
-
-	if (RxHeader.StdId == 0x285) {
-		if ((RxData[1] >> 1) & 1) {
-			MotorStatus_R = STATUS_ERROR;
-			return;
-		} else if (RxData[1] >> 7 & 1){
-			MotorStatus_R = STATUS_DERATING;
-			return;
+	if (RxHeader.StdId == 0x100) {
+		if (RxData[0] == 0x01) {
+			HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, 1);
 		} else {
-			switch(RxData[1]) {
-				case 0x01:
-					MotorStatus_R = STATUS_SYSTEM_READY;
-					break;
-				case 0x11:
-					MotorStatus_R = STATUS_DC_ON;
-					break;
-				case 0x19:
-					MotorStatus_R = STATUS_QUIT_DC_ON;
-					break;
-				case 0x59:
-					MotorStatus_R = STATUS_INVERTER_ON;
-					break;
-				case 0x79:
-					MotorStatus_R = STATUS_QUIT_INVERTER_ON;
-					break;
-				default:
-					MotorStatus_R = STATUS_UNKNOWN;
-			}
+			HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, 0);
 		}
-	}
-	else if (RxHeader.StdId == 0x284) {
-		if ((RxData[1] >> 1) & 1) {
-			MotorStatus_L = STATUS_ERROR;
-			return;
-		} else if (RxData[1] >> 7 & 1){
-			MotorStatus_L = STATUS_DERATING;
-			return;
+
+		if (RxData[1] == 0x01) {
+			HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, 1);
 		} else {
-			switch(RxData[1]) {
-				case 0x01:
-					MotorStatus_L = STATUS_SYSTEM_READY;
-					break;
-				case 0x11:
-					MotorStatus_L = STATUS_DC_ON;
-					break;
-				case 0x19:
-					MotorStatus_L = STATUS_QUIT_DC_ON;
-					break;
-				case 0x59:
-					MotorStatus_L = STATUS_INVERTER_ON;
-					break;
-				case 0x79:
-					MotorStatus_L = STATUS_QUIT_INVERTER_ON;
-					break;
-				default:
-					MotorStatus_L = STATUS_UNKNOWN;
-			}
+			HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, 0);
 		}
 	}
 }
 /* USER CODE END 4 */
-
-/**
-  * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM6 interrupt took place, inside
-  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
-  * a global variable "uwTick" used as application time base.
-  * @param  htim : TIM handle
-  * @retval None
-  */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  /* USER CODE BEGIN Callback 0 */
-
-  /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM6) {
-    HAL_IncTick();
-  }
-  /* USER CODE BEGIN Callback 1 */
-
-  /* USER CODE END Callback 1 */
-}
 
 /**
   * @brief  This function is executed in case of error occurrence.
