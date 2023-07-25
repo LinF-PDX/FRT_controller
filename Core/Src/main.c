@@ -18,7 +18,6 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "cmsis_os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -77,20 +76,6 @@ ADC_HandleTypeDef hadc3;
 CAN_HandleTypeDef hcan1;
 CAN_HandleTypeDef hcan3;
 
-/* Definitions for controllerStart */
-osThreadId_t controllerStartHandle;
-const osThreadAttr_t controllerStart_attributes = {
-  .name = "controllerStart",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityNormal,
-};
-/* Definitions for motorControl */
-osThreadId_t motorControlHandle;
-const osThreadAttr_t motorControl_attributes = {
-  .name = "motorControl",
-  .stack_size = 128 * 4,
-  .priority = (osPriority_t) osPriorityAboveNormal,
-};
 /* USER CODE BEGIN PV */
 CAN_TxHeaderTypeDef AMK_TxHeader_R;
 CAN_TxHeaderTypeDef AMK_TxHeader_L;
@@ -122,64 +107,40 @@ static void MX_ADC1_Init(void);
 static void MX_ADC2_Init(void);
 static void MX_ADC3_Init(void);
 static void MX_CAN3_Init(void);
-void Start_FRT_controller(void *argument);
-void Start_AMK(void *argument);
-
 /* USER CODE BEGIN PFP */
 static void CAN_Config(void);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-uint8_t APPS1_ADC_Percent(void) {
+uint16_t APPS1_ADC_Percent(void) {
 	uint16_t ADC_VAL;
-	float ADC_Percent;
-	uint8_t ADC_Out;
 
 	HAL_ADC_Start(&hadc1);
 	HAL_ADC_PollForConversion(&hadc1, 10);
 	ADC_VAL = HAL_ADC_GetValue(&hadc1);
 	HAL_ADC_Stop(&hadc1);
-	ADC_Percent = (ADC_VAL/MAX_ADC_VALUE)*100;
-	ADC_Out = (ADC_Percent - APPS1_MIN_VALUE)*(100/(APPS1_MAX_VALUE - APPS1_MIN_VALUE)); 	//apps1 travel from 15% to 85%
-	if (ADC_Out < 0) {
-		ADC_Out = 0;
-	}
-	return ADC_Out; //returns ADC percentage ranges from 0-1
+	return ADC_VAL;
 }
 
-uint8_t APPS2_ADC_Percent(void) {
+uint16_t APPS2_ADC_Percent(void) {
 	uint16_t ADC_VAL;
-	float ADC_Percent;
-	uint8_t ADC_Out;
 
-	HAL_ADC_Start(&hadc2);
-	HAL_ADC_PollForConversion(&hadc2, 10);
-	ADC_VAL = HAL_ADC_GetValue(&hadc2);
-	HAL_ADC_Stop(&hadc2);
-	ADC_Percent = (ADC_VAL/MAX_ADC_VALUE)*100;
-	ADC_Out = (ADC_Percent - APPS2_MIN_VALUE)*(100/(APPS2_MAX_VALUE - APPS2_MIN_VALUE));
-	if (ADC_Out < 0) {
-			ADC_Out = 0;
-	}
-	return ADC_Out;
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, 10);
+	ADC_VAL = HAL_ADC_GetValue(&hadc1);
+	HAL_ADC_Stop(&hadc1);
+	return ADC_VAL;
 }
 
-uint8_t BPPS_ADC_Percent(void) {
+uint16_t BPPS_ADC_Percent(void) {
 	uint16_t ADC_VAL;
-	float ADC_Percent;
-	uint8_t ADC_Out;
 
-	HAL_ADC_Start(&hadc3);
-	HAL_ADC_PollForConversion(&hadc3, 10);
-	ADC_VAL = HAL_ADC_GetValue(&hadc3);
-	HAL_ADC_Stop(&hadc3);
-	ADC_Percent = (ADC_VAL/MAX_ADC_VALUE)*100;
-	ADC_Out = (ADC_Percent - BPPS_MIN_VALUE)*(100/(BPPS_MAX_VALUE - BPPS_MIN_VALUE));
-	if (ADC_Out < 0) {
-			ADC_Out = 0;
-	}
-	return ADC_Out;
+	HAL_ADC_Start(&hadc1);
+	HAL_ADC_PollForConversion(&hadc1, 10);
+	ADC_VAL = HAL_ADC_GetValue(&hadc1);
+	HAL_ADC_Stop(&hadc1);
+	return ADC_VAL;
 }
 
 /* USER CODE END 0 */
@@ -256,43 +217,6 @@ int main(void)
 	AMK_TxData_L[7] = 0x00;
   /* USER CODE END 2 */
 
-  /* Init scheduler */
-  osKernelInitialize();
-
-  /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
-  /* USER CODE END RTOS_MUTEX */
-
-  /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
-  /* USER CODE END RTOS_SEMAPHORES */
-
-  /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
-  /* USER CODE END RTOS_TIMERS */
-
-  /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
-  /* USER CODE END RTOS_QUEUES */
-
-  /* Create the thread(s) */
-  /* creation of controllerStart */
-  controllerStartHandle = osThreadNew(Start_FRT_controller, NULL, &controllerStart_attributes);
-
-  /* creation of motorControl */
-  motorControlHandle = osThreadNew(Start_AMK, NULL, &motorControl_attributes);
-
-  /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
-  /* USER CODE END RTOS_THREADS */
-
-  /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
-  /* USER CODE END RTOS_EVENTS */
-
-  /* Start scheduler */
-  osKernelStart();
-  /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -730,168 +654,6 @@ void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 	}
 }
 /* USER CODE END 4 */
-
-/* USER CODE BEGIN Header_Start_FRT_controller */
-/**
-  * @brief  Function implementing the controllerStart thread.
-  * @param  argument: Not used
-  * @retval None
-  */
-/* USER CODE END Header_Start_FRT_controller */
-void Start_FRT_controller(void *argument)
-{
-  /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(50);
-    if (HAL_GPIO_ReadPin(START_BTN_n_GPIO_Port, START_BTN_n_Pin) == 0) {
-    	//Read Ready to Drive button
-    	TsOn_n = 1;
-    }
-    if (RxData[1] == 0x79 && TsOn_n && BrakeOn) {
-    	//Set ready to drive flag when all procedures are met
-    	ReadyToDrive = 1;
-    	//Sound read to drive speaker for 2s
-
-    	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
-		HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
-    	osDelay(2000);
-    	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
-		HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_RESET);
-
-		//Terminate thread when vehicle is ready to drive
-    	osThreadSuspend(controllerStartHandle);
-    } else if ((RxData[1] & 1) && !TsOn_n) {
-    	//Blink the status LED when AMK is ready
-		HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, GPIO_PIN_SET);
-		osDelay(500);
-		HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, GPIO_PIN_RESET);
-		osDelay(450);
-    } else if (TsOn_n) {
-    	//Send CAN messages to close AIRs
-    	while ((MotorStatus_R == STATUS_DERATING) && (MotorStatus_R == STATUS_DERATING)) {
-    		osDelay(50);
-    		HAL_GPIO_TogglePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin);
-    	}
-		HAL_GPIO_WritePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin, GPIO_PIN_SET);
-    }
-  }
-  /* USER CODE END 5 */
-}
-
-/* USER CODE BEGIN Header_Start_AMK */
-/**
-* @brief Function implementing the motorControl thread.
-* @param argument: Not used
-* @retval None
-*/
-/* USER CODE END Header_Start_AMK */
-void Start_AMK(void *argument)
-{
-  /* USER CODE BEGIN Start_AMK */
-  /* Infinite loop */
-  for(;;)
-  {
-
-    osDelay(5);
-    //Read accelerator position
-    APPS1_VAL = APPS1_ADC_Percent();
-    APPS2_VAL = APPS2_ADC_Percent();
-    BPPS_VAL = BPPS_ADC_Percent();
-
-    APPS1_VAL = APPS1_VAL*500;
-    //Read brake pressure
-    if (BPPS_VAL > 0) {
-    	BrakeOn = 1;
-    	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
-    } else {
-    	BrakeOn = 0;
-    	HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_RESET);
-    }
-    //Check if APPS and brake are both on
-    if (BrakeOn && (APPS1_VAL > 25)) {
-    	PedalConflict = 1;
-    } else if ((BrakeOn == 0) && (APPS1_VAL < 5)) {
-    	PedalConflict = 0;
-    }
-    //Check for accelerator plausibility
-    if (abs(APPS1_VAL - APPS2_VAL) >= 10){
-    	ReadyToDrive = 0;
-    }
-
-	//HAL_GPIO_WritePin(BRAKE_LIGHT_EN_GPIO_Port, BRAKE_LIGHT_EN_Pin, GPIO_PIN_SET);
-	//HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, GPIO_PIN_SET);
-
-    if ((MotorStatus_R == STATUS_SYSTEM_READY) && (MotorStatus_L == STATUS_SYSTEM_READY)) {
-    	//Perform AMK start-up sequence
-    	AMK_TxData_R[1] = 0x02;
-    	AMK_TxData_L[1] = 0x02;
-		ControlStatus = CONTROL_DC_ON;
-    } else if ((MotorStatus_R == STATUS_QUIT_DC_ON) && (MotorStatus_L == STATUS_QUIT_DC_ON)) {
-		AMK_TxData_L[1] = 0x07;
-		AMK_TxData_R[1] = 0x07;
-		memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
-		memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
-		ControlStatus = CONTROL_ENABLE;
-    } else if ((MotorStatus_R == STATUS_INVERTER_ON) && (MotorStatus_L == STATUS_INVERTER_ON)) {
-    	osThreadResume(controllerStartHandle);
-    	AMK_TxData_L[1] = 0x07;
-    	AMK_TxData_R[1] = 0x07;
-    	memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
-    	memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
-    	ControlStatus = CONTROL_INVERTER_ON;
-    } else if ((MotorStatus_R == STATUS_QUIT_INVERTER_ON) && (MotorStatus_L == STATUS_QUIT_INVERTER_ON) && TsOn_n) {
-    	if (ReadyToDrive && (PedalConflict == 0)) {
-    		AMK_TxData_R[1] = 0x07;
-			AMK_TxData_L[1] = 0x07;
-
-			AMK_TxData_R[2] = APPS1_VAL & 0xFF;
-			AMK_TxData_R[3] = (APPS1_VAL >> 8) & 0xFF;
-//			AMK_TxData_R[2] = 0xFF;
-//			AMK_TxData_R[3] = 0x01;
-			AMK_TxData_R[4] = 0x32; //set positive torque request to 50
-
-			AMK_TxData_L[2] = APPS1_VAL & 0xFF;
-			AMK_TxData_L[3] = (APPS1_VAL >> 8) & 0xFF;
-//			AMK_TxData_L[2] = 0xFF;
-//			AMK_TxData_L[3] = 0x01;
-			AMK_TxData_L[4] = 0x32;
-			ControlStatus = CONTROL_RUNNING;
-    	} else {
-    		AMK_TxData_R[1] = 0x07;
-    		AMK_TxData_L[1] = 0x07;
-    		memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
-    		memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
-    		ControlStatus = CONTROL_TS_READY;
-    	}
-    } else if (MotorStatus_R == STATUS_ERROR) {
-    	ReadyToDrive = 0;
-    	AMK_TxData_R[1] = 0x08;
-		ControlStatus = CONTROL_ERROR_RESET_RIGHT;
-    } else if (MotorStatus_L == STATUS_ERROR) {
-    	ReadyToDrive = 0;
-    	AMK_TxData_L[1] = 0x08;
-		ControlStatus = CONTROL_ERROR_RESET_LEFT;
-    } else if ((MotorStatus_R == STATUS_DERATING) && (MotorStatus_L == STATUS_DERATING)) {
-    	//TsOn_n = 0;
-    } else {
-    	ReadyToDrive = 0;
-    	AMK_TxData_L[1] = 0x07;
-		AMK_TxData_R[1] = 0x07;
-		memset(&AMK_TxData_R[2],0x00, 4*sizeof(uint8_t));
-		memset(&AMK_TxData_L[2],0x00, 4*sizeof(uint8_t));
-    	ControlStatus = CONTROL_UNKNOWN;
-    }
-
-	HAL_CAN_AddTxMessage(&hcan1, &AMK_TxHeader_R, AMK_TxData_R, &TxMailbox);
-	HAL_CAN_AddTxMessage(&hcan1, &AMK_TxHeader_L, AMK_TxData_L, &TxMailbox);
-	memset(&AMK_TxData_R[0],0x00, 8*sizeof(uint8_t));
-	memset(&AMK_TxData_L[0],0x00, 8*sizeof(uint8_t));
-  }
-  osThreadTerminate(NULL);
-  /* USER CODE END Start_AMK */
-}
 
 /**
   * @brief  Period elapsed callback in non blocking mode
