@@ -206,11 +206,15 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-	  HAL_Delay(5);
+	  HAL_Delay(10);
 	  APPS1_VAL = APPS1_ADC_Percent();
 	  APPS2_VAL = APPS2_ADC_Percent();
-	  BPPS_VAL = BPPS_ADC_Percent();
-	  ReadyToDrive_n = HAL_GPIO_ReadPin(RTDS_EN_GPIO_Port, RTDS_EN_Pin);
+	  //BPPS_VAL = BPPS_ADC_Percent();
+	  BPPS_VAL = 1000;
+	  ReadyToDrive_n = HAL_GPIO_ReadPin(START_BTN_n_GPIO_Port, START_BTN_n_Pin);
+	  //HAL_GPIO_TogglePin(START_BTN_LED_EN_GPIO_Port, START_BTN_LED_EN_Pin);
+	  //HAL_GPIO_WritePin(RTDS_EN_GPIO_Port, RTDS_EN_Pin, 1);
+
 
 	  TxData[1] = ReadyToDrive_n;
 	  TxData[2] = APPS1_VAL & 0xFF;
@@ -220,7 +224,7 @@ int main(void)
 	  TxData[6] = BPPS_VAL & 0xFF;
 	  TxData[7] = (BPPS_VAL >> 8) & 0xFF;
 
-	  HAL_CAN_AddTxMessage(&hcan1, &TxHeader, TxData, &TxMailbox);
+	  HAL_CAN_AddTxMessage(&hcan3, &TxHeader, TxData, &TxMailbox);
 	  memset(&TxData[0],0x00, 8*sizeof(uint8_t));
 
 
@@ -559,16 +563,16 @@ static void MX_GPIO_Init(void)
 static void CAN_Config(void)
 {
 	CAN_FilterTypeDef sFilterConfig;
-	sFilterConfig.FilterBank = 13;
+	sFilterConfig.FilterBank = 0;
 	sFilterConfig.FilterMode = CAN_FILTERMODE_IDMASK;
 	sFilterConfig.FilterScale = CAN_FILTERSCALE_32BIT;
-	sFilterConfig.FilterIdHigh = 0x284<<5;
+	sFilterConfig.FilterIdHigh = 0x0000;
 	sFilterConfig.FilterIdLow = 0x0000;
-	sFilterConfig.FilterMaskIdHigh = 0xFFE<<5; //Only ID 0x284 and 0x285 can pass through
+	sFilterConfig.FilterMaskIdHigh = 0x0000; //Only ID 0x284 and 0x285 can pass through
 	sFilterConfig.FilterMaskIdLow = 0x0000;
 	sFilterConfig.FilterFIFOAssignment = CAN_RX_FIFO0;
 	sFilterConfig.FilterActivation = ENABLE;
-	sFilterConfig.SlaveStartFilterBank = 0;
+	sFilterConfig.SlaveStartFilterBank = 14;
 
 	if (HAL_CAN_ConfigFilter(&hcan1, &sFilterConfig) != HAL_OK)
 	{
@@ -592,7 +596,7 @@ static void CAN_Config(void)
 void HAL_CAN_RxFifo0MsgPendingCallback(CAN_HandleTypeDef *hcan)
 {
 	//Get Rx message
-	if (HAL_CAN_GetRxMessage(&hcan3, CAN_RX_FIFO0, &RxHeader, RxData) != HAL_OK) {
+	if (HAL_CAN_GetRxMessage(&hcan1, CAN_RX_FIFO0, &RxHeader, RxData) != HAL_OK) {
 		Error_Handler();
 	}
 	if (RxHeader.StdId == 0x100) {
